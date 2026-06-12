@@ -1,14 +1,14 @@
 # QuickJS ships two real programs — `qjs` (the interpreter) and `qjsc` (the
 # bytecode compiler) — built from the same source tree. We fold them into one
-# multicall binary at $out/bin/qjs, with `qjsc` as an argv[0]-dispatch
-# UNPIN_META alias.
+# multicall binary at $out/bin/quickjs (named after the package, as the CI gate
+# requires), with `qjs` and `qjsc` as argv[0]-dispatch UNPIN_META aliases.
 #
 # Both mains pull in the same six library objects (quickjs/dtoa/libregexp/
 # libunicode/cutils/quickjs-libc), and `nm` confirms qjs.c and qjsc.c each
-# define exactly ONE clashing global (`main`) — qjsc's other globals
-# (namelist_*, …) live only in qjsc.o. So we compile the library objects ONCE,
-# compile the two mains, rename only `main` → `qjs_main`/`qjsc_main`, and link
-# everything (shared objects linked a single time) with the canonical dispatcher.
+# define exactly TWO clashing globals (`main` and `help`). So we compile the
+# library objects ONCE, compile the two mains, rename `main`/`help` →
+# `qjs_*`/`qjsc_*`, and link everything (shared objects linked a single time)
+# with the canonical dispatcher.
 #
 # The interpreter embeds the REPL as QuickJS bytecode: `qjsc -s -c -o repl.c -m
 # repl.js` emits a `qjsc_repl[]` byte array that qjs.c links against. That
@@ -111,11 +111,15 @@ let
       $OBJCOPY --redefine-syms=multicall/qjs.redef  multicall/obj/qjs.o
       $OBJCOPY --redefine-syms=multicall/qjsc.redef multicall/obj/qjsc.o
 
-      # Dispatcher (shared canonical generator). `qjs` is itself an applet and
-      # the canonical name, so defaultApplet=qjs makes a bare `qjs script.js`
-      # run the interpreter; an argv[0] of `qjsc` runs the compiler.
+      # Dispatcher (shared canonical generator). The canonical binary is named
+      # after the package (`quickjs`) — the action-build gate inspects
+      # `result/bin/<manifest.name>`, so the primary on-disk binary MUST be
+      # `quickjs`, with `qjs`/`qjsc` as embedded argv[0] aliases (the
+      # coreutils/busybox model). `quickjs` is not itself an applet, so
+      # defaultApplet=qjs makes a bare `quickjs script.js` run the interpreter;
+      # an argv[0] of `qjs` does the same and `qjsc` runs the compiler.
       printf '%s\n' qjs qjsc > multicall/apps.list
-${lib.multicallDispatcherC { name = "qjs"; defaultApplet = "qjs"; }}
+${lib.multicallDispatcherC { name = "quickjs"; defaultApplet = "qjs"; }}
       $CC -O2 -c -o multicall/dispatcher.o multicall/dispatcher.c
 
       # Final link. On mingw, force a fully static exe (-static folds libc,
@@ -135,8 +139,9 @@ ${lib.multicallDispatcherC { name = "qjs"; defaultApplet = "qjs"; }}
     installPhase = ''
       runHook preInstall
       mkdir -p "$out/bin"
-      install -m755 multicall/qjs "$out/bin/qjs"
-      ln -s qjs "$out/bin/qjsc"
+      install -m755 multicall/qjs "$out/bin/quickjs"
+      ln -s quickjs "$out/bin/qjs"
+      ln -s quickjs "$out/bin/qjsc"
       runHook postInstall
     '';
 
@@ -148,7 +153,7 @@ ${lib.multicallDispatcherC { name = "qjs"; defaultApplet = "qjs"; }}
 
   aliased = lib.withAliases pkgs
     {
-      primary = "qjs";
+      primary = "quickjs";
       aliasesFromSymlinksIn = "bin";
     }
     multicall;
@@ -156,7 +161,7 @@ in
 if isWindows
 then aliased.overrideAttrs (o: {
   postFixup = (o.postFixup or "") + ''
-    [ -f "$out/bin/qjs" ] && mv "$out/bin/qjs" "$out/bin/qjs.exe"
+    [ -f "$out/bin/quickjs" ] && mv "$out/bin/quickjs" "$out/bin/quickjs.exe"
   '';
 })
 else aliased

@@ -9,8 +9,9 @@
   inputs.unpins-lib.url = "github:unpins/nix-lib";
 
   # qjs (the interpreter, with the REPL bytecode embedded) + qjsc (the bytecode
-  # compiler) folded into one multicall binary at $out/bin/qjs, with `qjsc` as
-  # an argv[0]-dispatch UNPIN_META alias. See ./multicall.nix.
+  # compiler) folded into one multicall binary at $out/bin/quickjs (named after
+  # the package, as the action-build gate requires), with `qjs` and `qjsc` as
+  # argv[0]-dispatch UNPIN_META aliases. See ./multicall.nix.
   #
   # We take the source straight from Fabrice Bellard's upstream git rather than
   # nixpkgs: nixpkgs pins the older 2025-09-13 release, which carries three open
@@ -46,7 +47,6 @@
     ulib.mkStandaloneFlake {
       inherit self;
       name = "quickjs";
-      binName = "qjs";
       pkgsAttr = "quickjs";
       # QuickJS ships no man pages (docs are texi → pdf/html only), so there is
       # nothing to embed. Disabling embedMan also avoids the windows man-graft,
