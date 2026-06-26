@@ -118,8 +118,10 @@ let
       # coreutils/busybox model). `quickjs` is not itself an applet, so
       # defaultApplet=qjs makes a bare `quickjs script.js` run the interpreter;
       # an argv[0] of `qjs` does the same and `qjsc` runs the compiler.
-      printf '%s\n' qjs qjsc > multicall/apps.list
-${lib.multicallDispatcherC { name = "quickjs"; defaultApplet = "qjs"; }}
+      # multicallTableDispatcherC reads multicall/applets.list as TSV (tool<TAB>san):
+      # the renamed mains are qjs_main / qjsc_main, so san == tool for both.
+      printf '%s\t%s\n' qjs qjs qjsc qjsc > multicall/applets.list
+${lib.multicallTableDispatcherC { name = "quickjs"; defaultApplet = "qjs"; }}
       $CC -O2 -c -o multicall/dispatcher.o multicall/dispatcher.c
 
       # Final link. On mingw, force a fully static exe (-static folds libc,
