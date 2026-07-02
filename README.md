@@ -60,12 +60,12 @@ The [Releases](https://github.com/unpins/quickjs/releases) page has standalone b
   three open CVEs (`knownVulnerabilities`); the version we ship lands after those
   memory-handling fixes.
 - **Single multicall binary.** `qjs` (interpreter) and `qjsc` (bytecode
-  compiler) are folded into one binary at `$out/bin/qjs`, with `qjsc` an
-  `argv[0]`-dispatch alias. The bare/canonical `qjs` runs the interpreter
-  (`defaultApplet`); `qjs --unpin-program=qjsc …` reaches the compiler from the
-  bare binary. Both share the whole QuickJS library, so we don't prefix-rename
-  every global; `nm` confirms `qjs.c`/`qjsc.c` each define only `main` and
-  `help`, which are renamed per program. See `multicall.nix`.
+  compiler) are folded into one `$out/bin/quickjs`, selected by command name
+  (`argv[0]`). The bare/canonical `quickjs` runs the interpreter
+  (`defaultProgram`); `quickjs --unpin-program=qjsc …` reaches the compiler. On
+  Linux/macOS the fold is done by the unpin-llvm engine (per-program bitcode
+  module); Windows uses a source-level rename instead — `qjs.c`/`qjsc.c` each
+  define only `main` and `help`, renamed per program (see `multicall.nix`).
 - **REPL embedded as bytecode.** The interactive REPL (`repl.js`) is compiled to
   QuickJS bytecode (`qjsc -c`) and linked into the binary — there is no external
   `.js` file to ship. That bytecode is architecture-independent (the same trick
@@ -85,3 +85,7 @@ The [Releases](https://github.com/unpins/quickjs/releases) page has standalone b
   headers/library, which a single static binary does not carry — so use it with
   an explicit `-c`/`-e`, or compile the emitted C yourself. The baked compiler
   path is neutralized to a bare `cc` (no `/nix/store` reference).
+- **Tests.** QuickJS's suite is the ECMAScript `test262` conformance corpus — a
+  large external data set run by a separate harness, not a quick in-tree `make
+  check` — so it isn't wired into the build. The release smoke test evaluates a
+  computed expression to confirm the interpreter runs JS.
