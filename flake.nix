@@ -12,8 +12,8 @@
   # The standalone self-folds qjs (the interpreter, with the REPL bytecode
   # embedded) + qjsc (the bytecode compiler) into ONE dispatcher binary at
   # $out/bin/quickjs from the captured module.bc; `qjs`/`qjsc` are embedded as
-  # UNPIN_META aliases and bare `quickjs script.js` runs the interpreter
-  # (defaultProgram = "qjs"). darwin self-folds through the engine the SAME way;
+  # UNPIN_META aliases; `quickjs` itself is not a program, so a bare
+  # invocation lists the two. darwin self-folds through the engine the SAME way;
   # the old objcopy/source-rename fold in ./multicall.nix can't run on the
   # engine's -flto bitcode objects (Mach-O-wrapped on darwin), so it is reserved
   # for the windows path only.
@@ -127,14 +127,11 @@
       # exits 1), so smoke by evaluating a computed marker — proves the
       # interpreter actually runs JS (a shell ignoring `-e` wouldn't emit it)
       # and exits 0.
-      smoke = [ "-e" "console.log('quickjs ' + 6 * 7)" ];
+      smoke = [ "--unpin-program=qjs" "-e" "console.log('quickjs ' + 6 * 7)" ];
       smokePattern = "quickjs 42";
       engine = "unpin-llvm";
       multicall = {
         programs = [ { name = "qjs"; } { name = "qjsc"; } ];
-        # bare `quickjs script.js` runs the interpreter; the binary name
-        # `quickjs` is not itself one of the linked applets.
-        defaultProgram = "qjs";
       };
       # Linux AND darwin both self-fold through the engine (qjs + qjsc → one
       # `quickjs` from the captured bitcode module). The hand-rolled objcopy fold

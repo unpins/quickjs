@@ -115,13 +115,13 @@ let
       # after the package (`quickjs`) — the action-build gate inspects
       # `result/bin/<manifest.name>`, so the primary on-disk binary MUST be
       # `quickjs`, with `qjs`/`qjsc` as embedded argv[0] aliases (the
-      # coreutils/busybox model). `quickjs` is not itself an applet, so
-      # defaultApplet=qjs makes a bare `quickjs script.js` run the interpreter;
-      # an argv[0] of `qjs` does the same and `qjsc` runs the compiler.
+      # coreutils/busybox model). `quickjs` is not itself an applet, so a bare
+      # invocation lists the two; an argv[0] of `qjs` runs the interpreter and
+      # `qjsc` the compiler.
       # multicallTableDispatcherC reads multicall/applets.list as TSV (tool<TAB>san):
       # the renamed mains are qjs_main / qjsc_main, so san == tool for both.
       printf '%s\t%s\n' qjs qjs qjsc qjsc > multicall/applets.list
-${lib.multicallTableDispatcherC { name = "quickjs"; defaultApplet = "qjs"; }}
+${lib.multicallTableDispatcherC { name = "quickjs"; }}
       $CC -O2 -c -o multicall/dispatcher.o multicall/dispatcher.c
 
       # Final link. On mingw, force a fully static exe (-static folds libc,
