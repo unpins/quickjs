@@ -8,15 +8,12 @@
 
   inputs.unpins-lib.url = "github:unpins/nix-lib";
 
-  # Linux: build via the unpin-llvm engine + emit a bitcode multicall module.
-  # The standalone self-folds qjs (the interpreter, with the REPL bytecode
-  # embedded) + qjsc (the bytecode compiler) into ONE dispatcher binary at
-  # $out/bin/quickjs from the captured module.bc; `qjs`/`qjsc` are embedded as
-  # UNPIN_META aliases; `quickjs` itself is not a program, so a bare
-  # invocation lists the two. darwin self-folds through the engine the SAME way;
-  # the old objcopy/source-rename fold in ./multicall.nix can't run on the
-  # engine's -flto bitcode objects (Mach-O-wrapped on darwin), so it is reserved
-  # for the windows path only.
+  # Every target builds via the unpin-llvm engine + emits a bitcode multicall
+  # module. The standalone self-folds qjs (the interpreter, with the REPL
+  # bytecode embedded) + qjsc (the bytecode compiler) into ONE dispatcher binary
+  # at $out/bin/quickjs from the captured module.bc; `qjs`/`qjsc` are embedded
+  # as UNPIN_META aliases; `quickjs` itself is not a program, so a bare
+  # invocation lists the two.
   #
   # We take the source straight from Fabrice Bellard's upstream git rather than
   # nixpkgs: nixpkgs pins the older 2025-09-13 release, which carries three open
@@ -29,8 +26,7 @@
   # and unlike lua there is no readline/terminfo leak (qjs line-edits in JS via
   # raw tty). The one store-path leak is qjsc's baked-in CONFIG_CC / CONFIG_PREFIX
   # (the compiler + install prefix qjsc shells out to in its executable-output
-  # mode); both are neutralized to bare `cc` / `/usr/local` — in `retarget` for
-  # the engine path (linux + darwin) and in ./multicall.nix for windows.
+  # mode); both are neutralized to bare `cc` / `/usr/local` in `retarget`.
   outputs = { self, unpins-lib }:
     let
       ulib = unpins-lib.lib;
@@ -47,10 +43,7 @@
       # (which `install` depends on) also builds examples, including PIC shared
       # objects (examples/*.so) that can't link against the static-musl crt on
       # i686 (`R_386_PC32 against _start_c/_init/_fini without -fPIC`); we never
-      # ship them. The old hand-rolled multicall.nix compiled objects directly and
-      # never ran `make all`, so it dodged this — the engine path runs the real
-      # `make`, so strip the examples here. Shared by the real build and the
-      # repl.c host bootstrap below.
+      # ship them. Shared by the real build and the repl.c host bootstrap below.
       dropExamples = ''
         substituteInPlace Makefile \
           --replace-fail 'PROGS+=examples/hello examples/test_fib' "" \
@@ -131,27 +124,33 @@
       smokePattern = "quickjs 42";
       engine = "unpin-llvm";
       multicall = {
+        windows = true;
         programs = [ { name = "qjs"; } { name = "qjsc"; } ];
       };
-      # Linux AND darwin both self-fold through the engine (qjs + qjsc → one
-      # `quickjs` from the captured bitcode module). The hand-rolled objcopy fold
-      # in ./multicall.nix is ELF-only — it can't redefine-syms the engine's -flto
-      # bitcode objects (Mach-O-wrapped on darwin) — so it is WINDOWS-ONLY now,
-      # reached solely via windowsBuild below.
       build = pkgs: retarget pkgs pkgs.pkgsStatic.quickjs;
       windowsBuild = pkgs:
-        let
-          cross = ulib.mingwStaticCross pkgs;
+        let cross = ulib.mingwStaticCross pkgs; in
+        (retarget pkgs cross.quickjs).overrideAttrs (o: {
           # QuickJS includes <pthread.h> and links -lpthread (worker threads,
           # JS atomics) on every platform; mingw needs winpthreads for the
           # header + static lib (same as aom/vim's windows builds).
-          # windows uses multicall.nix (its own repl.c via replC, no `make all`),
-          # so retarget's Makefile/repl.c patches are inert here — pass `pkgs` only
-          # to satisfy the new signature.
-          base = (retarget pkgs cross.quickjs).overrideAttrs (o: {
-            buildInputs = (o.buildInputs or [ ]) ++ [ cross.windows.pthreads ];
-          });
-        in
-        import ./multicall.nix { lib = pkgs.lib // ulib; } { inherit pkgs; quickjs = base; };
+          buildInputs = (o.buildInputs or [ ]) ++ [ cross.windows.pthreads ];
+          # Upstream's Makefile only takes its Windows branch when told to:
+          # without CONFIG_WIN32 it appends -ldl to LIBS, passes -rdynamic and
+          # names the targets with no .exe. CROSS_PREFIX is forced empty because
+          # CONFIG_WIN32 otherwise defaults it to `x86_64-w64-mingw32-`, which
+          # switches the build onto a host-qjsc bootstrap it doesn't need (the
+          # repl.c `retarget` injects is already host-generated) and looks for a
+          # build-host gcc that isn't on PATH.
+          makeFlags = (o.makeFlags or [ ]) ++ [ "CONFIG_WIN32=y" "CROSS_PREFIX=" ];
+          # run-test262 sits in PROGS unconditionally and #includes <ftw.h>,
+          # which mingw doesn't ship. It's a test driver we never ship, so drop
+          # it the same way dropExamples drops the examples.
+          postPatch = (o.postPatch or "") + ''
+            substituteInPlace Makefile \
+              --replace-fail 'PROGS=qjs$(EXE) qjsc$(EXE) run-test262$(EXE)' \
+                             'PROGS=qjs$(EXE) qjsc$(EXE)'
+          '';
+        });
     };
 }
