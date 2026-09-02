@@ -125,7 +125,11 @@
       engine = "unpin-llvm";
       multicall = {
         windows = true;
-        programs = [ { name = "qjs"; } { name = "qjsc"; } ];
+        programs = [
+          # quickjs installs no man pages at all.
+          { name = "qjs"; noMan = true; }
+          { name = "qjsc"; noMan = true; }
+        ];
       };
       build = pkgs: retarget pkgs pkgs.pkgsStatic.quickjs;
       windowsBuild = pkgs:
