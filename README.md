@@ -13,12 +13,12 @@ Part of the [unpins](https://unpins.org) catalog; install it with [`unpin`](http
 
 ## Usage
 
-Run the `qjs` interpreter with [unpin](https://github.com/unpins/unpin):
+Run the interpreter with [unpin](https://github.com/unpins/unpin):
 
 ```bash
-unpin qjs script.js              # run a script
-unpin qjs -e 'console.log(1+1)'  # run a one-liner
-unpin qjs -i                     # interactive REPL
+unpin quickjs --unpin-program=qjs script.js              # run a script
+unpin quickjs --unpin-program=qjs -e 'console.log(1+1)'  # run a one-liner
+unpin quickjs --unpin-program=qjs -i                     # interactive REPL
 ```
 
 To install it onto your PATH:
@@ -38,13 +38,13 @@ qjsc -c -o out.c -m script.js    # compile to a C bytecode array
 
 ```bash
 nix build github:unpins/quickjs
-./result/bin/qjs -e 'console.log("hi")'
+./result/bin/quickjs --unpin-program=qjs -e 'console.log("hi")'
 ```
 
 Or run directly:
 
 ```bash
-nix run github:unpins/quickjs -- -e 'console.log("hi")'
+nix run github:unpins/quickjs -- --unpin-program=qjs -e 'console.log("hi")'
 ```
 
 The first invocation will offer to add the [unpins.cachix.org](https://unpins.cachix.org) substituter so most pulls come pre-built.
@@ -61,8 +61,8 @@ The [Releases](https://github.com/unpins/quickjs/releases) page has standalone b
   memory-handling fixes.
 - **Single multicall binary.** `qjs` (interpreter) and `qjsc` (bytecode
   compiler) are folded into one `$out/bin/quickjs`, selected by command name
-  (`argv[0]`). The bare/canonical `quickjs` runs the interpreter
-  (`defaultProgram`); `quickjs --unpin-program=qjsc …` reaches the compiler. The
+  (`argv[0]`) or by `--unpin-program=<name>`. `quickjs` is the suite's name, not
+  a program of its own, so a bare `quickjs` lists the two and exits 1. The
   fold is done by the unpin-llvm engine (per-program bitcode module) on every
   platform, Windows included.
 - **REPL embedded as bytecode.** The interactive REPL (`repl.js`) is compiled to
