@@ -62,9 +62,7 @@ The [Releases](https://github.com/unpins/quickjs/releases) page has standalone b
 - **Single multicall binary.** `qjs` (interpreter) and `qjsc` (bytecode
   compiler) are folded into one `$out/bin/quickjs`, selected by command name
   (`argv[0]`) or by `--unpin-program=<name>`. `quickjs` is the suite's name, not
-  a program of its own, so a bare `quickjs` lists the two and exits 1. The
-  fold is done by the unpin-llvm engine (per-program bitcode module) on every
-  platform, Windows included.
+  a program of its own, so a bare `quickjs` lists the two and exits 1.
 - **REPL embedded as bytecode.** The interactive REPL (`repl.js`) is compiled to
   QuickJS bytecode (`qjsc -c`) and linked into the binary — there is no external
   `.js` file to ship. That bytecode is architecture-independent (the same trick
