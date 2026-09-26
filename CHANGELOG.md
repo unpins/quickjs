@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2026-06-04-1] - 2026-09-26
+
 Initial release — QuickJS `2026-06-04` as a single self-contained binary, built
 natively for Linux, macOS, and Windows.
 
